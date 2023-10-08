@@ -1,26 +1,14 @@
 const chalk = require("chalk");
-const {
-  Telegraf,
-  session
-} = require("telegraf");
+const { Telegraf, session } = require("telegraf");
 // const { SessionManager } = require("@puregram/session");
-const {
-  message
-} = require("telegraf/filters");
-const {
-  Configuration,
-  OpenAIApi
-} = require("openai");
+const { message } = require("telegraf/filters");
+const { Configuration, OpenAIApi } = require("openai");
 const ffmpeg = require("fluent-ffmpeg");
 const got = require("got");
 const fs = require("fs");
 const _ = require("lodash");
-const {
-  encode
-} = require("gpt-3-encoder");
-const {
-  escapeForMarkdown
-} = require("./utils/scapeForMarkdown.js");
+const { encode } = require("gpt-3-encoder");
+const { escapeForMarkdown } = require("./utils/scapeForMarkdown.js");
 const commandHandlerMiddleware = require("./middleware/commandHandlerMiddleware.js");
 require("dotenv").config();
 const configuration = new Configuration({
@@ -43,14 +31,13 @@ const chatStateInitialProps = {
 };
 
 const getSlicedContext = (dialog, systemPromptLength) => {
-  if (dialog.length === 0) return {
-    dialog,
-    tokens: 0
-  };
+  if (dialog.length === 0)
+    return {
+      dialog,
+      tokens: 0,
+    };
   const contextLength = dialog.reduce(
-    (acc, {
-      content
-    }) => acc + encode(content).length,
+    (acc, { content }) => acc + encode(content).length,
     0
   );
   if (
@@ -60,7 +47,7 @@ const getSlicedContext = (dialog, systemPromptLength) => {
     console.log(chalk.blue(contextLength));
     return {
       dialog,
-      tokens: contextLength
+      tokens: contextLength,
     };
   }
 
@@ -81,12 +68,15 @@ const setState = (ctx, prop, value) => {
     ...ctx.session.state[ctx.chat.id],
     [prop]: value,
   };
+  console.log(ctx.session.state[ctx.chat.id][prop]);
 };
 
 const getLogObject = (ctx, slag = {}) => {
   let message_type = ctx.message.text
-  ? "text": ctx.message.voice
-  ? "voice": "other";
+    ? "text"
+    : ctx.message.voice
+    ? "voice"
+    : "other";
   console.log(chalk.blue(message_type));
   //let message.fileName=ctx.update.message.voice.file_id
   const log = {
@@ -108,19 +98,19 @@ const initSession = (ctx, next) => {
     if (!ctx?.session?.dialogs) {
       ctx.session.dialogs = new Map();
     }
-  } else try {
-    console.log(ctx)
-    ctx.sendMessage("session is not available in channels"
-    );
-    throw new Error({
-      message: "session is not available in channels"
-    })
-  }catch (error) {
-    (error)=> {
-      console.log(chalk.red(error.message));
+  } else
+    try {
+      console.log(ctx);
+      ctx.sendMessage("session is not available in channels");
+      throw new Error({
+        message: "session is not available in channels",
+      });
+    } catch (error) {
+      (error) => {
+        console.log(chalk.red(error.message));
+      };
+      return;
     }
-    return;
-  }
   if (!ctx?.session?.state) {
     ctx.session.state = {
       [ctx.chat.id]: {
@@ -131,11 +121,11 @@ const initSession = (ctx, next) => {
     // let currentList = []
     if (!ctx?.session?.state[ctx.chat.id])
       ctx.session.state = {
-      ...ctx.session.state,
-      [ctx.chat.id]: {
-        ...chatStateInitialProps,
-      },
-    };
+        ...ctx.session.state,
+        [ctx.chat.id]: {
+          ...chatStateInitialProps,
+        },
+      };
   }
   console.log(`state is:`, ctx);
   return next();
@@ -146,29 +136,32 @@ const checkAccess = (ctx, next) => {
     return next();
   }
 
-  console.log(chalk.red(`checking access for:${JSON.stringify(ctx.message.from)}`));
+  console.log(
+    chalk.red(`checking access for:${JSON.stringify(ctx.message.from)}`)
+  );
   let isAllowed = false;
   //if(ctx.chat.id){
   if (ctx.message.from.id) {
     //TELEGRAM_ADMIN_USERctx.message.from.username
-    isAllowed = String(process.env.ALLOWED_UDERS || "").split(",").map(id=>_.toNumber(id)).includes(ctx.message.from.id);
+    isAllowed = String(process.env.ALLOWED_UDERS || "")
+      .split(",")
+      .map((id) => _.toNumber(id))
+      .includes(ctx.message.from.id);
     ctx.session.isAllowed = isAllowed;
-  }// else if (ctx.robot)
+  } // else if (ctx.robot)
   if (isAllowed) {
     let logObject = getLogObject(ctx);
 
     fs.appendFileSync(
       `./logs/access-log${ctx.chat.id}.log`,
-      JSON.stringify(logObject, null, 0)+ ","
+      JSON.stringify(logObject, null, 0) + ","
     );
     next();
-  } else
-  {
-    ctx.sendMessage("Access denied! Please send your telegram user name to Bot Admin");
-    let {
-      _sessionCache,
-      logObj
-    } = ctx;
+  } else {
+    ctx.sendMessage(
+      "Access denied! Please send your telegram user name to Bot Admin"
+    );
+    let { _sessionCache, logObj } = ctx;
     fs.appendFileSync(
       `./logs/unauthorize-access-log${ctx.chat.id}.log`,
       JSON.stringify(logObj, null, 0) + ","
@@ -202,30 +195,25 @@ const isUserAllowed = (ctx, next) => {
   return next(); // just testing in dev mode should return if not allowed
 };
 
-const getChatCompletion = async(ctx, dialogs)=> {
+const getChatCompletion = async (ctx, dialogs) => {
   const stateRef = getState(ctx);
-  console.log("hi")
+  console.log("hi");
   try {
     const response = await gpt.createChatCompletion({
       model: "gpt-3.5-turbo",
       messages: dialogs,
-      max_tokens:MAX_RESPONSE_TOKENS, //MAX_CONTEXT_TOKENS-tokens-stateRef.systemPromptLength-
-      
+      max_tokens: MAX_RESPONSE_TOKENS, //MAX_CONTEXT_TOKENS-tokens-stateRef.systemPromptLength-
     });
-    console.log(response)
-    const {
-      message
-    } = response.data.choices[0];
-    const {
-      content
-    } = message;
+    console.log(response);
+    const { message } = response.data.choices[0];
+    const { content } = message;
     console.log(chalk.blue(content));
     dialogs.push(message);
-    console.log(ctx.session.dialogs)
+    console.log(ctx.session.dialogs);
     ctx.session.dialogs.set(ctx.chat.id, dialogs);
     return content;
   } catch (error) {
-    console.log(error)
+    console.log(error);
     clearInterval(uploadingAudio);
     clearInterval(typing);
     const openAIError = error.response?.data?.error?.message;
@@ -239,7 +227,7 @@ const getChatCompletion = async(ctx, dialogs)=> {
       error?.response?.statusText ?? error.response.description
     );
   }
-}
+};
 
 if (process.env.NODE_ENV === "dev") {
   bot.use(Telegraf.log());
@@ -303,8 +291,9 @@ bot.command("system", async (ctx) => {
     - /empty to clear current prompt.
     - /cancel to get back.
     ${
-    getState(ctx).systemPromptLength > 0
-    ? "📟 Current system prompt is: \n" + getState(ctx).systemPrompt: "\n No system prompt provided yet"
+      getState(ctx).systemPromptLength > 0
+        ? "📟 Current system prompt is: \n" + getState(ctx).systemPrompt
+        : "\n No system prompt provided yet"
     }`,
     {
       parse_mode: "Markdown",
@@ -336,7 +325,7 @@ bot.command("preview", async (ctx) => {
 });
 
 bot.command("vts", async (ctx) => {
-  setState(ctx, "activeCommand", "vtt");
+  setState(ctx, "activeCommand", "vts");
   await ctx.sendMessage(
     `🔧 Switch it on to enable **voice to text** even if Bot is mute.
     - /on
@@ -373,40 +362,41 @@ bot.command("img", async (ctx) => {
     await ctx.sendChatAction("upload_photo");
   }, 1000);
   gpt
-  .createImage({
-    prompt:
-    prompt.length > 0
-    ? prompt: "Paint a most beautiful painting of stunning situation or landscape in a mix of two different famous painter",
-    size: "512x512",
-    response_format: "url",
-    n: stateRef.imageGenerationCount,
-  })
-  .then(async (response) => {
-    // console.log(response.data);
-    if (stateRef.imageGenerationCount === 1)
-      await ctx.replyWithPhoto({
-      url: response.data.data[0].url,
-    });
-    else {
-      await ctx.replyWithMediaGroup(
-        response.data.data.map((imgData, i) => {
-          return {
-            media: {
-              url: imgData.url,
-            },
-            type: "photo",
-            caption: `${prompt}-(${i})`,
-          };
-        })
-      );
-    }
-  })
-  .catch(async (error) => {
-    clearInterval(uploadPhoto);
-    console.log(chalk.red(error));
-    await ctx.reply(ERROR_MESSAGE);
-  })
-  .finally(() => clearInterval(uploadPhoto));
+    .createImage({
+      prompt:
+        prompt.length > 0
+          ? prompt
+          : "Paint a most beautiful painting of stunning situation or landscape in a mix of two different famous painter",
+      size: "512x512",
+      response_format: "url",
+      n: stateRef.imageGenerationCount,
+    })
+    .then(async (response) => {
+      // console.log(response.data);
+      if (stateRef.imageGenerationCount === 1)
+        await ctx.replyWithPhoto({
+          url: response.data.data[0].url,
+        });
+      else {
+        await ctx.replyWithMediaGroup(
+          response.data.data.map((imgData, i) => {
+            return {
+              media: {
+                url: imgData.url,
+              },
+              type: "photo",
+              caption: `${prompt}-(${i})`,
+            };
+          })
+        );
+      }
+    })
+    .catch(async (error) => {
+      clearInterval(uploadPhoto);
+      console.log(chalk.red(error));
+      await ctx.reply(ERROR_MESSAGE);
+    })
+    .finally(() => clearInterval(uploadPhoto));
 });
 
 bot.on(message("voice"), async (ctx) => {
@@ -452,85 +442,82 @@ bot.on(message("voice"), async (ctx) => {
     // set the output format and save to output file
     const outputFile = `./voices/${fileId}.mp3`;
     command
-    .toFormat("mp3")
-    .save(outputFile)
-    .on("end", async () => {
-      const convertedFile = fs.createReadStream(outputFile);
-      // Convert audio to text using Whisper API
-      const textResponse = await gpt.createTranscription(
-        convertedFile,
-        "whisper-1"
-      );
+      .toFormat("mp3")
+      .save(outputFile)
+      .on("end", async () => {
+        const convertedFile = fs.createReadStream(outputFile);
+        // Convert audio to text using Whisper API
+        const textResponse = await gpt.createTranscription(
+          convertedFile,
+          "whisper-1"
+        );
 
-      const transcript = textResponse; // psy remove await
+        const transcript = textResponse; // psy remove await
 
-      // Send the response back to the user
-      let prompt = transcript.data.text;
-      // clearInterval(uploadingAudio);
-      if (prompt.length === 0) {
-        return await ctx.reply("⚠️ Couldn't detect any speech in the voice");
-      }
-      // psy add await and put
-      await ctx.sendMessage(`🎤💬📝: \`${prompt}\` `, {
-        parse_mode: "Markdown",
-      });
-      clearInterval(uploadingAudio);
-
-      if (stateRef.isMute) return;
-
-      const isTest = prompt.length < 5;
-
-      const typing = setInterval(async () => {
-        await ctx.sendChatAction("typing");
-      }, 1000);
-
-      // Send transcript along with rest of the conversation to get gpt's answer
-      if (!ctx.session.dialogs.has(chatId)) {
-        ctx.session.dialogs.set(chatId, []);
-      }
-
-      let dialogArray = ctx.session.dialogs.get(chatId);
-
-      if (!isTest) {
-        dialogArray.push({
-          role: "user",
-          content: prompt,
+        // Send the response back to the user
+        let prompt = transcript.data.text;
+        // clearInterval(uploadingAudio);
+        if (prompt.length === 0) {
+          return await ctx.reply("⚠️ Couldn't detect any speech in the voice");
+        }
+        // psy add await and put
+        await ctx.sendMessage(`🎤💬📝: \`${prompt}\` `, {
+          parse_mode: "Markdown",
         });
-      }
-
-      const {
-        dialog,
-        tokens
-      } = getSlicedContext(
-        dialogArray,
-        stateRef.systemPromptLength
-      );
-
-      let dialogs = [];
-      if (stateRef.systemPrompt.length > 0)
-        dialogs = [{
-        role: "system",
-        content: stateRef.systemPrompt,
-      },
-        ...dialog,
-      ];
-      else dialogs = [...dialog];
-      console.log(chalk.green(dialogs));
-
-      try {
-        const answer = await getChatCompletion(ctx, dialogs);
-
-        clearInterval(typing);
-        await ctx.sendMessage(answer, {
-          parse_mode: stateRef.parseMode,
-        });
-
-      } catch (error) {
-        clearInterval(typing);
         clearInterval(uploadingAudio);
-      }
-    }).on("error",
-      (err) => console.error(err));
+
+        if (stateRef.isMute) return;
+
+        const isTest = prompt.length < 5;
+
+        const typing = setInterval(async () => {
+          await ctx.sendChatAction("typing");
+        }, 1000);
+
+        // Send transcript along with rest of the conversation to get gpt's answer
+        if (!ctx.session.dialogs.has(chatId)) {
+          ctx.session.dialogs.set(chatId, []);
+        }
+
+        let dialogArray = ctx.session.dialogs.get(chatId);
+
+        if (!isTest) {
+          dialogArray.push({
+            role: "user",
+            content: prompt,
+          });
+        }
+
+        const { dialog, tokens } = getSlicedContext(
+          dialogArray,
+          stateRef.systemPromptLength
+        );
+
+        let dialogs = [];
+        if (stateRef.systemPrompt.length > 0)
+          dialogs = [
+            {
+              role: "system",
+              content: stateRef.systemPrompt,
+            },
+            ...dialog,
+          ];
+        else dialogs = [...dialog];
+        console.log(chalk.green(dialogs));
+
+        try {
+          const answer = await getChatCompletion(ctx, dialogs);
+
+          clearInterval(typing);
+          await ctx.sendMessage(answer, {
+            parse_mode: stateRef.parseMode,
+          });
+        } catch (error) {
+          clearInterval(typing);
+          clearInterval(uploadingAudio);
+        }
+      })
+      .on("error", (err) => console.error(err));
   } catch (error) {
     console.error(error);
     await ctx.reply(ERROR_MESSAGE);
@@ -541,29 +528,29 @@ bot.on(message("text"), async (ctx) => {
   //if (ctx.state.command)
   // console.log(`command from middleware${ctx.state.command.command}`)
   const stateRef = getState(ctx);
-  console.log("state:",
-    stateRef);
+  console.log("state:", stateRef);
   let isCommandText = false;
   if (stateRef.activeCommand.length > 0) {
+    let activeCommand = stateRef.activeCommand;
     isCommandText = true;
-    console.log(`Command:${stateRef.activeCommand}`, ctx);
+    console.log(`Active Command:${activeCommand}`);
     let message = "";
     // List commands
-    if (stateRef.activeCommand === "system") {
+    if (activeCommand === "system") {
       if (ctx.message.text === "/cancel") {
         message = "📟 Ok, let's get back to the conversation";
       }
       if (ctx.message.text === "/empty") {
         setState(ctx, "systemPromptLength", 0);
         message = "📟 System Prompt removed Successfully";
+      } else if (ctx.message.text === "/cancel") {
+        message = "📟 Abort!";
       } else {
         setState(ctx, "systemPrompt", ctx.message.text);
         setState(ctx, "systemPromptLength", encode(ctx.message.text).length);
         message = "📟 System prompt set successfully.";
       }
-    }
-
-    if (stateRef.activeCommand === "preview") {
+    } else if (activeCommand === "preview") {
       if (ctx.message.text === "/html") {
         console.log("Messages parse mode changed to HTML");
         setState(ctx, "parseMode", "HTML");
@@ -574,9 +561,7 @@ bot.on(message("text"), async (ctx) => {
 
         setState(ctx, "parseMode", "Markdown");
       }
-    }
-
-    if (stateRef.activeCommand === "vtt") {
+    } else if (activeCommand === "vtt") {
       if (ctx.message.text === "/on") {
         console.log("vtt command set to ON");
         setState(ctx, "transcript", true);
@@ -595,7 +580,7 @@ bot.on(message("text"), async (ctx) => {
     return await ctx.sendMessage(message);
   } else {
     if (isCommandText) return;
-    console.log(stateRef)
+    console.log(stateRef);
     if (stateRef.isMute) return;
 
     const chatId = ctx.chat.id;
@@ -606,7 +591,7 @@ bot.on(message("text"), async (ctx) => {
     }, 1000);
 
     if (!ctx.session.dialogs.has(chatId)) {
-      console.log("no chat id")
+      console.log("no chat id");
       ctx.session.dialogs.set(chatId, []);
     }
 
@@ -619,41 +604,41 @@ bot.on(message("text"), async (ctx) => {
       });
     }
 
-    const {
-      dialog,
-      tokens
-    } = getSlicedContext(dialogArray, stateRef.systemPromptLength);
+    const { dialog, tokens } = getSlicedContext(
+      dialogArray,
+      stateRef.systemPromptLength
+    );
 
     let dialogs = [];
-    console.log("line 625 Tokens:", tokens)
+    console.log("line 615 Tokens:", tokens);
     if (stateRef.systemPromptLength > 0)
-      dialogs = [{
-      role: "system",
-      content: stateRef.systemPrompt,
-    },
-      ...dialog,
-    ];
+      dialogs = [
+        {
+          role: "system",
+          content: stateRef.systemPrompt,
+        },
+        ...dialog,
+      ];
     else dialogs = [...dialog];
-console.log(dialogs)
+    console.log(dialogs);
     try {
       const answer = await getChatCompletion(ctx, dialogs);
-console.log(answer)
+      console.log(answer);
       clearInterval(typing);
       await ctx.sendMessage(answer, {
         parse_mode: stateRef.parseMode,
       });
-
     } catch (error) {
       clearInterval(typing);
-    };
+    }
   }
 });
 
-bot.on('channel_post', (ctx, next) => {
-  console.log(ctx.update)
-  ctx.update.message = ctx.update.channel_post
-  return next()
-})
+bot.on("channel_post", (ctx, next) => {
+  console.log(ctx.update);
+  ctx.update.message = ctx.update.channel_post;
+  return next();
+});
 
 bot.catch((error) => console.error(error));
 
@@ -665,7 +650,5 @@ bot.launch().then(() =>
   })
 );
 
-process.once("SIGINT",
-  () => bot.stop("SIGINT"));
-process.once("SIGTERM",
-  () => bot.stop("SIGTERM"));
+process.once("SIGINT", () => bot.stop("SIGINT"));
+process.once("SIGTERM", () => bot.stop("SIGTERM"));
