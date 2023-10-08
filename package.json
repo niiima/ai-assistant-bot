@@ -1,0 +1,25 @@
+{
+  "name": "telegram-gpt-whisper-bot",
+  "version": "1.5.0",
+  "main": "index.js",
+  "engines": {
+    "node": "19.6.1",
+    "npm": "9.4.0"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "dev": "set NODE_ENV=dev && nodemon index.js",
+    "dev:windows": "SET NODE_ENV=dev && nodemon index.js"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "chalk": "^4.1.0",
+    "dotenv": "^16.0.3",
+    "fluent-ffmpeg": "^2.1.2",
+    "got": "^11.8.3",
+    "gpt-3-encoder": "^1.1.4",
+    "lodash": "^4.17.21",
+    "openai": "^3.2.1",
+    "telegraf": "^4.12.2"
+  }
+}
